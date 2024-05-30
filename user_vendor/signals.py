@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db.models import Avg, F, ExpressionWrapper, fields
@@ -29,11 +30,11 @@ def performance_update(sender, instance, **kwargs):
                                                     avg_quality_rating=Avg('quality_rating', default=0.0))
     average_quality_rating = total_rating.get('avg_quality_rating', 0.0)
 
-    # response time calculation in minutes
-    acknowledged_pos = completed_pos.filter(vendor=vendor, acknowledgment_date__isnull=False)
-    response_time = acknowledged_pos.filter(vendor=vendor).aggregate(avg_response_time=Avg(ExpressionWrapper(
+    # response time calculation in minutes    
+    acknowledged_pos = completed_pos.filter(vendor=vendor, acknowledgment_date__isnull=False, acknowledgment_date__gt=F("issue_date"))
+    response_time = acknowledged_pos.aggregate(avg_response_time=Avg(ExpressionWrapper(
             F("acknowledgment_date") - F("issue_date"), output_field=fields.DurationField())))
-    average_response_time = response_time.get('avg_response_time', 0.0)
+    average_response_time = response_time.get('avg_response_time', timedelta(seconds=0))
 
     # fulfillment rate calculation in percentage
     issued_pos_count = PurchaseOrder.objects.filter(vendor=vendor).count()
